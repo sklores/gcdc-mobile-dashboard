@@ -20,3 +20,18 @@ Accent tokens (examples)
 - marquee/bg: soft lavender
 
 Why: matches our color boards (grayscale + Beach Day + pastels) and keeps the scenic TopBar readable.
+Hex tokens
+- ink/main: #2A2C34
+- ink/dim:  #787D85
+- frame:    #E1E2E6
+- bg/app:   #F0F1F5
+- bg/tile:  #FFFFFF
+- shadow/soft: rgba(0,0,0,0.18)
+
+KPI accents (pastel)
+- kpi/cogs:   #F8D5AA
+- kpi/labor:  #C1DCEE
+- kpi/prime:  #C6E2D6
+- kpi/bank:   #BDDBE6
+- kpi/profit: #F9F1C7
+- marquee/bg: #CCBAF6
