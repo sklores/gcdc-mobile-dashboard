@@ -1,0 +1,5 @@
+TabBar plan (per guide/sketch)
+- Buttons: Day | Week | Month | Refresh
+- Lives inside the Bottom edge of the TopBar border frame
+- Refresh also triggers LightBeam in ScenicStage
+- State only noted for now (no logic yet)
