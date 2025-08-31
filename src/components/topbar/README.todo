@@ -1,0 +1,13 @@
+TopBar plan (from guide + sketch)
+- BorderFrame
+- ClientLogo (front-most, centered)
+- ScenicStage layers:
+  - Lighthouse (left)
+  - LightBeam (triggers on load/refresh)
+  - Birds (count tied to Labor KPI)
+  - SkyLayer (pastel dayparts; supports other layers)
+  - Waves (size tied to Sales KPI)
+  - Weather (clouds/fog/rain/lightning by live weather)
+  - SunMoon (top-right, time-based)
+- Controls (manual triggers for each layer)
+- TabBar (Day/Week/Month + Refresh)
