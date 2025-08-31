@@ -35,3 +35,17 @@ KPI accents (pastel)
 - kpi/bank:   #BDDBE6
 - kpi/profit: #F9F1C7
 - marquee/bg: #CCBAF6
+Score → color thresholds (global)
+- 0–39  = red (poor)
+- 40–69 = amber (watch)
+- 70–100 = green (good)
+
+Per-metric direction
+- Sales: higher = better
+- Net Profit: higher = better
+- COGS %: lower = better
+- Labor %: lower = better
+- Prime %: lower = better
+- Bank balance: higher = better
+- Online views: higher = better
+- Review score: higher = better
