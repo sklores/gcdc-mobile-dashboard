@@ -1,0 +1,7 @@
+Manual Controls (per guide)
+- Toggle daypart (sunrise/morning/afternoon/dusk/night)
+- Force Weather (clear/overcast/fog/rain/thunderstorm)
+- Trigger LightBeam (on demand)
+- Birds: set count (ties to Labor KPI later)
+- Waves: set size (ties to Sales KPI later)
+- Reset to live state (uses live weather/time)
