@@ -1,0 +1,4 @@
+SalesBar (per guide/sketch)
+- Top KPI tile shows Sales for Day/Week/Month
+- Pulls from Sheets (range to be set in sheetMap.ts)
+- Color gradient: red → yellow → green by score
