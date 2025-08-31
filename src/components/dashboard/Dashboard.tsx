@@ -1,28 +1,82 @@
 // src/components/dashboard/Dashboard.tsx
-import { useEffect, useState } from "react";
+// New build — mobile-only dashboard workbench
+// - Reads KPI rows from Sheets (A2:G17) like the old build
+// - Maps KPIs by LABEL text (column A) so row order can change
+// - Pastel red→amber→green background based on score/targets
+// - Day view only (Week/Month later will just swap cells/tab)
+
+import { useEffect, useMemo, useState } from "react";
 import { fetchSheetValues } from "../../features/data/sheets/fetch";
 
-// helpers
+// ---------- helpers ----------
 const toNum = (v: unknown) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : null;
 };
+const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+
+// formatters by unit token
 const fmtUSD = (n: number | null) =>
   n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n: number | null) => (n == null ? "—" : `${Math.round(n)}%`);
 const fmtInt = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
 
-export default function Dashboard() {
-  // KPI state (Day view cells)
-  const [sales, setSales] = useState<number | null>(null);       // B2
-  const [cogs, setCogs] = useState<number | null>(null);         // B3
-  const [labor, setLabor] = useState<number | null>(null);       // B4
-  const [prime, setPrime] = useState<number | null>(null);       // B5
-  const [bank, setBank] = useState<number | null>(null);         // B6
-  const [online, setOnline] = useState<number | null>(null);     // B7
-  const [review, setReview] = useState<number | null>(null);     // B11
-  const [netProfit, setNetProfit] = useState<number | null>(null); // B12
+type Unit = "$" | "%" | "";
 
+// pastel traffic-light colors
+const PASTEL = {
+  red:   "#F6C1C1",
+  amber: "#F8D5AA",
+  green: "#C6E2D6",
+};
+
+// score → pastel color (classic thresholds)
+function scoreToPastel(score: number): string {
+  if (score >= 70) return PASTEL.green;
+  if (score >= 40) return PASTEL.amber;
+  return PASTEL.red;
+}
+
+// compute score using green/red targets when present;
+// otherwise sensible defaults per metric direction
+function computeScore(opts: {
+  value: number | null;
+  unit: Unit;
+  higherIsBetter: boolean;
+  greenAt?: number | null;
+  redAt?: number | null;
+}): number {
+  const { value, unit, higherIsBetter, greenAt, redAt } = opts;
+  if (value == null) return 0;
+
+  const G = toNum(greenAt ?? null);
+  const R = toNum(redAt ?? null);
+
+  if (G != null && R != null && G !== R) {
+    // map value between redAt and greenAt
+    let t = higherIsBetter ? (value - R) / (G - R) : (R - value) / (R - G);
+    return clamp(Math.round(t * 100));
+  }
+
+  // fallback heuristics when no targets provided
+  if (unit === "%") {
+    // for %: if higher is better (rare), score=value; if lower is better, score = 100 - value
+    return clamp(Math.round(higherIsBetter ? value : 100 - value));
+  }
+  // for $ or ints without targets: treat positive as "good-ish"
+  return value > 0 ? 75 : 25;
+}
+
+// pick formatter by unit
+function formatByUnit(value: number | null, unit: Unit) {
+  if (unit === "$") return fmtUSD(value);
+  if (unit === "%") return fmtPct(value);
+  return fmtInt(value);
+}
+
+// ---------- component ----------
+export default function Dashboard() {
+  const [rows, setRows] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -31,26 +85,110 @@ export default function Dashboard() {
       try {
         setLoading(true);
         setErr(null);
-        const rows = await fetchSheetValues(); // RANGE A2:G17 → rows[0] is row 2, rows[10] is row 12, etc.
-
-        setSales(toNum(rows?.[0]?.[1]));      // B2
-        setCogs(toNum(rows?.[1]?.[1]));       // B3
-        setLabor(toNum(rows?.[2]?.[1]));      // B4
-        setPrime(toNum(rows?.[3]?.[1]));      // B5
-        setBank(toNum(rows?.[4]?.[1]));       // B6
-        setOnline(toNum(rows?.[5]?.[1]));     // B7
-        setReview(toNum(rows?.[9]?.[1]));     // B11 (rows[9] because A2 offset → row 11 = index 9)
-        setNetProfit(toNum(rows?.[10]?.[1])); // B12 (index 10)
+        const r = await fetchSheetValues(); // RANGE A2:G17
+        setRows(r || []);
       } catch (e: any) {
         setErr(String(e?.message || e));
-        setSales(null); setCogs(null); setLabor(null);
-        setPrime(null); setBank(null); setOnline(null);
-        setReview(null); setNetProfit(null);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  // Old build’s KPI rows inside A2:G17
+  // It used these indices for the 9 tiles (0-based inside the range):
+  //   [0,1,2,3,4,5,8,9,10]
+  const kpiRowIdx = [0, 1, 2, 3, 4, 5, 8, 9, 10];
+
+  type KpiRow = {
+    label: string;         // column A
+    value: number | null;  // column B
+    greenAt: number | null;// column C
+    redAt: number | null;  // column D
+    unit: Unit;            // column F ("$", "%", or "")
+  };
+
+  const kpis = useMemo(() => {
+    const found: KpiRow[] = [];
+    for (const idx of kpiRowIdx) {
+      const r = rows[idx] || [];
+      const label = String(r[0] ?? "").trim();
+      if (!label) continue;
+      const unitToken = String(r[5] ?? "").trim().toLowerCase();
+      const unit: Unit = unitToken === "$" || unitToken === "usd" || unitToken === "dollar" ? "$"
+                      : unitToken === "%" ? "%" : "";
+      found.push({
+        label,
+        value: toNum(r[1]),
+        greenAt: toNum(r[2]),
+        redAt: toNum(r[3]),
+        unit,
+      });
+    }
+    return found;
+  }, [rows]);
+
+  // Map by label text (case/space-insensitive)
+  const byLabel = useMemo(() => {
+    const map = new Map<string, KpiRow>();
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+    for (const k of kpis) map.set(norm(k.label), k);
+    return {
+      get: (...names: string[]): KpiRow | undefined => {
+        const normNames = names.map(n => n.toLowerCase().replace(/\s+/g, " ").trim());
+        for (const n of normNames) {
+          if (by.has(n)) return by.get(n);
+        }
+        return undefined;
+      }
+    };
+    // local alias so .get can see it
+    function by(n: string) { return map.get(n); }
+  }, [kpis]);
+
+  // Resolve each metric by friendly names
+  const pick = (names: string[]) => byLabel.get(...names);
+
+  const sales      = pick(["sales"]);
+  const cogs       = pick(["cogs", "cost of goods", "cost of goods sold"]);
+  const labor      = pick(["labor", "labour"]);
+  const prime      = pick(["prime", "prime cost"]);
+  const bank       = pick(["bank", "bank balance"]);
+  const online     = pick(["online views", "views", "online"]);
+  const review     = pick(["review score", "reviews", "rating"]);
+  const netProfit  = pick(["net profit", "profit"]);
+
+  // Render helper for a KPI card with pastel traffic-light background
+  const KpiCard = ({
+    title,
+    row,
+    higherIsBetter,
+  }: {
+    title: string;
+    row: KpiRow | undefined;
+    higherIsBetter: boolean;
+  }) => {
+    const value = row?.value ?? null;
+    const unit  = row?.unit ?? "";
+    const score = computeScore({
+      value,
+      unit,
+      higherIsBetter,
+      greenAt: row?.greenAt ?? null,
+      redAt: row?.redAt ?? null,
+    });
+    const bg = scoreToPastel(score);
+    const shown = formatByUnit(value, unit);
+
+    return (
+      <section style={shell}>
+        <div style={titleStyle}>{title}</div>
+        <div style={bar(bg)}>
+          {loading ? "Syncing…" : err ? "Error" : shown}
+        </div>
+      </section>
+    );
+  };
 
   // shared styles (Pastel / Pill / Soft)
   const shell: React.CSSProperties = {
@@ -73,61 +211,37 @@ export default function Dashboard() {
     fontSize: 24,
     letterSpacing: 0.3,
   });
-  const title: React.CSSProperties = { fontWeight: 800, fontSize: 16, marginBottom: 8 };
-
-  const show = (node: React.ReactNode) => (loading ? "Syncing…" : err ? "Error" : node);
+  const titleStyle: React.CSSProperties = { fontWeight: 800, fontSize: 16, marginBottom: 8 };
 
   return (
     <main className="main">
       <h1 style={{ margin: "12px 0 16px" }}>Innovue Dashboard</h1>
 
-      {/* Sales */}
-      <section style={shell}>
-        <div style={title}>Sales</div>
-        <div style={bar("#C1DCEE")}>{show(fmtUSD(sales))}</div>
-      </section>
+      {/* Sales (higher is better) */}
+      <KpiCard title="Sales" row={sales} higherIsBetter />
 
-      {/* Row: COGS + Labor */}
+      {/* Row: COGS (lower better) + Labor (lower better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-        <section style={shell}>
-          <div style={title}>COGS</div>
-          <div style={bar("#F8D5AA")}>{show(fmtPct(cogs))}</div>
-        </section>
-        <section style={shell}>
-          <div style={title}>Labor</div>
-          <div style={bar("#C1DCEE")}>{show(fmtPct(labor))}</div>
-        </section>
+        <KpiCard title="COGS"  row={cogs}  higherIsBetter={false} />
+        <KpiCard title="Labor" row={labor} higherIsBetter={false} />
       </div>
 
-      {/* Row: Prime + Bank */}
+      {/* Row: Prime (lower better) + Bank (higher better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-        <section style={shell}>
-          <div style={title}>Prime</div>
-          <div style={bar("#C6E2D6")}>{show(fmtPct(prime))}</div>
-        </section>
-        <section style={shell}>
-          <div style={title}>Bank</div>
-          <div style={bar("#BDDBE6")}>{show(fmtUSD(bank))}</div>
-        </section>
+        <KpiCard title="Prime" row={prime} higherIsBetter={false} />
+        <KpiCard title="Bank"  row={bank}  higherIsBetter />
       </div>
 
-      {/* Row: Online Views + Review Score */}
+      {/* Row: Online Views (higher better) + Review Score (higher better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-        <section style={shell}>
-          <div style={title}>Online Views</div>
-          <div style={bar("#C1DCEE")}>{show(fmtInt(online))}</div>
-        </section>
-        <section style={shell}>
-          <div style={title}>Review Score</div>
-          <div style={bar("#CCBAF6")}>{show(fmtInt(review))}</div>
-        </section>
+        <KpiCard title="Online Views" row={online} higherIsBetter />
+        <KpiCard title="Review Score" row={review} higherIsBetter />
       </div>
 
-      {/* Net Profit */}
-      <section style={{ ...shell, marginTop: 16, marginBottom: 24 }}>
-        <div style={title}>Net Profit</div>
-        <div style={bar("#F9F1C7")}>{show(fmtUSD(netProfit))}</div>
-      </section>
+      {/* Net Profit (higher better) */}
+      <div style={{ marginTop: 16, marginBottom: 24 }}>
+        <KpiCard title="Net Profit" row={netProfit} higherIsBetter />
+      </div>
     </main>
   );
 }
