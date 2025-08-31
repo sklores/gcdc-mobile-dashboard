@@ -1,0 +1,17 @@
+/* src/index.css — mobile baseline */
+:root { }
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background: #111;  /* temp dark bg */
+  color: #eee;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+/* mobile container helpers */
+.main {
+  width: 100%;
+  max-width: 420px;   /* phone width fence */
+  margin: 0 auto;
+  padding: 12px;
+}
