@@ -1,7 +1,5 @@
-Dashboard plan (from guide/sketch)
-- KPI Tiles:
-  - Sales bar (top)
-  - 2×3 KPI grid (middle)
-  - Net Profit bar (bottom)
-- Marquee: Live Feed strip below tiles
-- Gauges: reserved section (new feature)
+Marquee plan (per guide/sketch)
+- Live Feed ticker below KPI tiles
+- Content sources: reviews, social, bank, events (filters later)
+- Style: smooth horizontal scroll (like old build)
+- Status line shows: Live • Last Sync • Data Source Health
