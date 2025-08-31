@@ -1,0 +1,22 @@
+Design tokens (vibe lock)
+- Tile vibe: Pastel (soft Beach-Day accents)
+- Corners: Pill (16px)
+- Shadow: Soft (subtle drop; low elevation)
+
+Surface tokens
+- bg/app: light neutral
+- bg/tile: white
+- border/frame: light cool gray
+- shadow/soft: low-opacity blur
+- ink/main: near-black
+- ink/dim: medium gray
+
+Accent tokens (examples)
+- kpi/cogs: soft amber
+- kpi/labor: soft sky
+- kpi/prime: soft teal
+- kpi/bank: soft cyan
+- kpi/profit: soft butter yellow
+- marquee/bg: soft lavender
+
+Why: matches our color boards (grayscale + Beach Day + pastels) and keeps the scenic TopBar readable.
