@@ -1,12 +1,7 @@
 // src/components/dashboard/Dashboard.tsx
-// New build — mobile-only dashboard workbench
-// - Reads KPI rows from Sheets (A2:G17)
-// - Maps KPIs by LABEL text (column A) so row order can change
-// - Pastel red→amber→green backgrounds by score/targets
-// - Day view only for now
-
 import { useEffect, useMemo, useState } from "react";
 import { fetchSheetValues } from "../../features/data/sheets/fetch";
+import Marquee from "./Marquee/Marquee";
 
 // ---------- helpers ----------
 const toNum = (v: unknown) => {
@@ -15,7 +10,6 @@ const toNum = (v: unknown) => {
 };
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 
-// formatters
 const fmtUSD = (n: number | null) =>
   n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n: number | null) => (n == null ? "—" : `${Math.round(n)}%`);
@@ -44,7 +38,6 @@ function computeScore(opts: {
     let t = higherIsBetter ? (value - R) / (G - R) : (R - value) / (R - G);
     return clamp(Math.round(t * 100));
   }
-
   if (unit === "%") return clamp(Math.round(higherIsBetter ? value : 100 - value));
   return value > 0 ? 75 : 25;
 }
@@ -70,16 +63,9 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // Old build’s 9 KPI rows (0-based within A2:G17)
+  // KPI rows inside A2:G17 (0-based)
   const kpiRowIdx = [0, 1, 2, 3, 4, 5, 8, 9, 10];
-
-  type KpiRow = {
-    label: string;         // A
-    value: number | null;  // B
-    greenAt: number | null;// C
-    redAt: number | null;  // D
-    unit: Unit;            // F ("$", "%", or "")
-  };
+  type KpiRow = { label: string; value: number | null; greenAt: number | null; redAt: number | null; unit: Unit };
 
   const kpis = useMemo(() => {
     const out: KpiRow[] = [];
@@ -105,22 +91,21 @@ export default function Dashboard() {
     return out;
   }, [rows]);
 
-  // Map by label text (case/space-insensitive)
+  // label mapping
   const byLabel = useMemo(() => {
     const map = new Map<string, KpiRow>();
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
     for (const k of kpis) map.set(norm(k.label), k);
-    const get = (...names: string[]): KpiRow | undefined => {
-      for (const raw of names) {
-        const k = map.get(norm(raw));
-        if (k) return k;
+    const get = (...names: string[]) => {
+      for (const n of names) {
+        const hit = map.get(norm(n));
+        if (hit) return hit;
       }
       return undefined;
     };
     return { get };
   }, [kpis]);
 
-  // Resolve KPIs by friendly names (aliases supported)
   const sales     = byLabel.get("sales");
   const cogs      = byLabel.get("cogs", "cost of goods", "cost of goods sold");
   const labor     = byLabel.get("labor", "labour");
@@ -130,7 +115,7 @@ export default function Dashboard() {
   const review    = byLabel.get("review score", "reviews", "rating");
   const netProfit = byLabel.get("net profit", "profit");
 
-  // shared styles (Pastel / Pill / Soft)
+  // shared styles
   const shell: React.CSSProperties = {
     background: "#fff",
     color: "#2A2C34",
@@ -183,34 +168,60 @@ export default function Dashboard() {
     );
   };
 
+  // ----- Live Feed (marquee) -----
+  const marqueeText = useMemo(() => {
+    // indices relative to A2:G17:
+    // B8  → rows[6][1]   questions
+    // B9  → rows[7][1]   reviews
+    // B15 → rows[13][1]  banking
+    // B16 → rows[14][1]  social
+    // B17 → rows[15][1]  news
+    const val = (ri: number) => String(rows?.[ri]?.[1] ?? "").trim();
+    const parts = [val(6), val(7), val(13), val(14), val(15)].filter(Boolean);
+    return parts.join("   •   ");
+  }, [rows]);
+
+  const marqueeSec = useMemo(() => {
+    // G12 → rows[10][6] (0–100 control mapped to 40..140s)
+    const raw = rows?.[10]?.[6];
+    const ctl = Math.max(1, Math.min(100, Number(String(raw ?? "").replace(/[^\d.-]/g, "")) || 70));
+    return 40 + (ctl / 100) * 100;
+  }, [rows]);
+
   return (
     <main className="main">
       <h1 style={{ margin: "12px 0 16px" }}>Innovue Dashboard</h1>
 
-      {/* Sales (higher better) */}
+      {/* Sales */}
       <KpiCard title="Sales" row={sales} higherIsBetter />
 
-      {/* COGS + Labor (lower better) */}
+      {/* COGS + Labor */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
         <KpiCard title="COGS" row={cogs} higherIsBetter={false} />
         <KpiCard title="Labor" row={labor} higherIsBetter={false} />
       </div>
 
-      {/* Prime (lower better) + Bank (higher better) */}
+      {/* Prime + Bank */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
         <KpiCard title="Prime" row={prime} higherIsBetter={false} />
         <KpiCard title="Bank" row={bank} higherIsBetter />
       </div>
 
-      {/* Online Views + Review Score (higher better) */}
+      {/* Online + Review */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
         <KpiCard title="Online Views" row={online} higherIsBetter />
         <KpiCard title="Review Score" row={review} higherIsBetter />
       </div>
 
-      {/* Net Profit (higher better) */}
-      <div style={{ marginTop: 16, marginBottom: 24 }}>
+      {/* Net Profit */}
+      <div style={{ marginTop: 16 }}>
         <KpiCard title="Net Profit" row={netProfit} higherIsBetter />
+      </div>
+
+      {/* Live Feed (marquee) */}
+      <div style={{ marginTop: 16, marginBottom: 24 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Live Feed</div>
+        <Marquee text={marqueeText} speedSec={marqueeSec} />
       </div>
     </main>
   );
