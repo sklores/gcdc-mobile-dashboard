@@ -1,0 +1,5 @@
+KpiGrid (2×3) — per guide/sketch
+- Six tiles (example set for now):
+  COGS • Labor • Prime Cost • Bank Balance • Online Views • Review Score
+- Pulls from Sheets (ranges to be listed in sheetMap.ts)
+- Same gradient logic as SalesBar (red → yellow → green)
