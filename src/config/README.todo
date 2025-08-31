@@ -1,17 +1,3 @@
-// KPI → Google Sheets A1 ranges (from guide/sketch; fill later)
-// Day/Week/Month tabs will map to these same cells on each tab.
-
-export const SHEET_MAP = {
-  SALES:        "", // e.g., 'Day!B2'
-  LABOR:        "", // e.g., 'Day!B3'
-  COGS:         "", // e.g., 'Day!B4'
-  PRIME_COST:   "", // (Labor + COGS)
-  BANK_BAL:     "", // e.g., 'Day!B5'
-  ONLINE_VIEWS: "", // e.g., 'Day!B6'
-  NET_PROFIT:   "", // e.g., 'Day!B7'
-  REVIEW_SCORE: ""  // e.g., 'Day!B8'
-};
-
-// Notes:
-// - We’ll switch the sheet name (Day/Week/Month) via the TabBar later.
-// - Ranges match the dashboard order: Sales → 2×3 grid → Net Profit → Live Feed.
+config folder
+- tuning.ts: TopBar “tuning knobs” (sizes/positions/speeds) — per guide’s TopBar tuning.  [oai_citation:0‡Innovue Mobile Dashboard Reference Guide FILE TREE IDEAS.pdf](file-service://file-2SKBtSaGrfUW1ojUQcnNQ6)
+- sheetMap.ts: KPI → Google Sheets ranges (Day/Week/Month), matching the dashboard/order in the sketch.  [oai_citation:1‡Innovue Mobile Dashboard Reference Guide SKETCHES (3).pdf](file-service://file-A64K182dyCqZccZkr4RvUE)
