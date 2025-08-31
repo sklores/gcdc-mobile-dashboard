@@ -1,4 +1,6 @@
 // src/components/dashboard/Dashboard.tsx
+// …(header comment unchanged)
+
 import { useEffect, useMemo, useState } from "react";
 import { fetchSheetValues } from "../../features/data/sheets/fetch";
 import Marquee from "./Marquee/Marquee";
@@ -47,6 +49,16 @@ export default function Dashboard() {
   const [rows, setRows] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+
+  // Live Feed filter state
+  const [pick, setPick] = useState({
+    news: true,
+    reviews: true,
+    social: true,
+    bank: true,
+    events: true,
+  });
+  const toggle = (k: keyof typeof pick) => setPick(p => ({ ...p, [k]: !p[k] }));
 
   useEffect(() => {
     (async () => {
@@ -169,24 +181,43 @@ export default function Dashboard() {
   };
 
   // ----- Live Feed (marquee) -----
-  const marqueeText = useMemo(() => {
-    // indices relative to A2:G17:
-    // B8  → rows[6][1]   questions
-    // B9  → rows[7][1]   reviews
-    // B15 → rows[13][1]  banking
-    // B16 → rows[14][1]  social
-    // B17 → rows[15][1]  news
+  const marqueeParts = useMemo(() => {
     const val = (ri: number) => String(rows?.[ri]?.[1] ?? "").trim();
-    const parts = [val(6), val(7), val(13), val(14), val(15)].filter(Boolean);
-    return parts.join("   •   ");
+    return {
+      news: val(15),     // B17
+      reviews: val(7),   // B9
+      social: val(14),   // B16
+      bank: val(13),     // B15
+      events: val(6),    // B8 (placeholder label)
+    };
   }, [rows]);
 
+  const marqueeText = useMemo(() => {
+    const order: Array<keyof typeof marqueeParts> = ["news", "reviews", "social", "bank", "events"];
+    const pieces = order
+      .filter(k => pick[k])
+      .map(k => marqueeParts[k])
+      .filter(Boolean);
+    return pieces.join("   •   ");
+  }, [marqueeParts, pick]);
+
   const marqueeSec = useMemo(() => {
-    // G12 → rows[10][6] (0–100 control mapped to 40..140s)
-    const raw = rows?.[10]?.[6];
+    const raw = rows?.[10]?.[6]; // G12
     const ctl = Math.max(1, Math.min(100, Number(String(raw ?? "").replace(/[^\d.-]/g, "")) || 70));
     return 40 + (ctl / 100) * 100;
   }, [rows]);
+
+  // filter chip styles
+  const chip = (active: boolean): React.CSSProperties => ({
+    padding: "8px 12px",
+    borderRadius: 12,
+    fontWeight: 800,
+    fontSize: 14,
+    color: active ? "#0b2540" : "#787D85",
+    background: active ? "#E1E2F9" : "transparent",
+    border: active ? "1px solid #C9CDF0" : "1px solid #E1E2E6",
+    userSelect: "none",
+  });
 
   return (
     <main className="main">
@@ -218,10 +249,18 @@ export default function Dashboard() {
         <KpiCard title="Net Profit" row={netProfit} higherIsBetter />
       </div>
 
-      {/* Live Feed (marquee) */}
+      {/* Live Feed */}
       <div style={{ marginTop: 16, marginBottom: 24 }}>
         <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 8 }}>Live Feed</div>
         <Marquee text={marqueeText} speedSec={marqueeSec} />
+        {/* filter chips */}
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+          <button onClick={() => toggle("news")}   style={chip(pick.news)}>news</button>
+          <button onClick={() => toggle("reviews")}style={chip(pick.reviews)}>reviews</button>
+          <button onClick={() => toggle("social")} style={chip(pick.social)}>social</button>
+          <button onClick={() => toggle("bank")}   style={chip(pick.bank)}>bank</button>
+          <button onClick={() => toggle("events")} style={chip(pick.events)}>events</button>
+        </div>
       </div>
     </main>
   );
