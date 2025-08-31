@@ -1,9 +1,9 @@
 // src/components/dashboard/Dashboard.tsx
 // New build — mobile-only dashboard workbench
-// - Reads KPI rows from Sheets (A2:G17) like the old build
+// - Reads KPI rows from Sheets (A2:G17)
 // - Maps KPIs by LABEL text (column A) so row order can change
-// - Pastel red→amber→green background based on score/targets
-// - Day view only (Week/Month later will just swap cells/tab)
+// - Pastel red→amber→green backgrounds by score/targets
+// - Day view only for now
 
 import { useEffect, useMemo, useState } from "react";
 import { fetchSheetValues } from "../../features/data/sheets/fetch";
@@ -15,7 +15,7 @@ const toNum = (v: unknown) => {
 };
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
 
-// formatters by unit token
+// formatters
 const fmtUSD = (n: number | null) =>
   n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n: number | null) => (n == null ? "—" : `${Math.round(n)}%`);
@@ -24,21 +24,10 @@ const fmtInt = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-U
 type Unit = "$" | "%" | "";
 
 // pastel traffic-light colors
-const PASTEL = {
-  red:   "#F6C1C1",
-  amber: "#F8D5AA",
-  green: "#C6E2D6",
-};
+const PASTEL = { red: "#F6C1C1", amber: "#F8D5AA", green: "#C6E2D6" };
+const scoreToPastel = (score: number) => (score >= 70 ? PASTEL.green : score >= 40 ? PASTEL.amber : PASTEL.red);
 
-// score → pastel color (classic thresholds)
-function scoreToPastel(score: number): string {
-  if (score >= 70) return PASTEL.green;
-  if (score >= 40) return PASTEL.amber;
-  return PASTEL.red;
-}
-
-// compute score using green/red targets when present;
-// otherwise sensible defaults per metric direction
+// compute score with optional green/red targets
 function computeScore(opts: {
   value: number | null;
   unit: Unit;
@@ -51,27 +40,13 @@ function computeScore(opts: {
 
   const G = toNum(greenAt ?? null);
   const R = toNum(redAt ?? null);
-
   if (G != null && R != null && G !== R) {
-    // map value between redAt and greenAt
     let t = higherIsBetter ? (value - R) / (G - R) : (R - value) / (R - G);
     return clamp(Math.round(t * 100));
   }
 
-  // fallback heuristics when no targets provided
-  if (unit === "%") {
-    // for %: if higher is better (rare), score=value; if lower is better, score = 100 - value
-    return clamp(Math.round(higherIsBetter ? value : 100 - value));
-  }
-  // for $ or ints without targets: treat positive as "good-ish"
+  if (unit === "%") return clamp(Math.round(higherIsBetter ? value : 100 - value));
   return value > 0 ? 75 : 25;
-}
-
-// pick formatter by unit
-function formatByUnit(value: number | null, unit: Unit) {
-  if (unit === "$") return fmtUSD(value);
-  if (unit === "%") return fmtPct(value);
-  return fmtInt(value);
 }
 
 // ---------- component ----------
@@ -85,7 +60,7 @@ export default function Dashboard() {
       try {
         setLoading(true);
         setErr(null);
-        const r = await fetchSheetValues(); // RANGE A2:G17
+        const r = await fetchSheetValues(); // A2:G17
         setRows(r || []);
       } catch (e: any) {
         setErr(String(e?.message || e));
@@ -95,29 +70,31 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // Old build’s KPI rows inside A2:G17
-  // It used these indices for the 9 tiles (0-based inside the range):
-  //   [0,1,2,3,4,5,8,9,10]
+  // Old build’s 9 KPI rows (0-based within A2:G17)
   const kpiRowIdx = [0, 1, 2, 3, 4, 5, 8, 9, 10];
 
   type KpiRow = {
-    label: string;         // column A
-    value: number | null;  // column B
-    greenAt: number | null;// column C
-    redAt: number | null;  // column D
-    unit: Unit;            // column F ("$", "%", or "")
+    label: string;         // A
+    value: number | null;  // B
+    greenAt: number | null;// C
+    redAt: number | null;  // D
+    unit: Unit;            // F ("$", "%", or "")
   };
 
   const kpis = useMemo(() => {
-    const found: KpiRow[] = [];
+    const out: KpiRow[] = [];
     for (const idx of kpiRowIdx) {
       const r = rows[idx] || [];
       const label = String(r[0] ?? "").trim();
       if (!label) continue;
       const unitToken = String(r[5] ?? "").trim().toLowerCase();
-      const unit: Unit = unitToken === "$" || unitToken === "usd" || unitToken === "dollar" ? "$"
-                      : unitToken === "%" ? "%" : "";
-      found.push({
+      const unit: Unit =
+        unitToken === "$" || unitToken === "usd" || unitToken === "dollar"
+          ? "$"
+          : unitToken === "%"
+          ? "%"
+          : "";
+      out.push({
         label,
         value: toNum(r[1]),
         greenAt: toNum(r[2]),
@@ -125,7 +102,7 @@ export default function Dashboard() {
         unit,
       });
     }
-    return found;
+    return out;
   }, [rows]);
 
   // Map by label text (case/space-insensitive)
@@ -133,62 +110,25 @@ export default function Dashboard() {
     const map = new Map<string, KpiRow>();
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
     for (const k of kpis) map.set(norm(k.label), k);
-    return {
-      get: (...names: string[]): KpiRow | undefined => {
-        const normNames = names.map(n => n.toLowerCase().replace(/\s+/g, " ").trim());
-        for (const n of normNames) {
-          if (by.has(n)) return by.get(n);
-        }
-        return undefined;
+    const get = (...names: string[]): KpiRow | undefined => {
+      for (const raw of names) {
+        const k = map.get(norm(raw));
+        if (k) return k;
       }
+      return undefined;
     };
-    // local alias so .get can see it
-    function by(n: string) { return map.get(n); }
+    return { get };
   }, [kpis]);
 
-  // Resolve each metric by friendly names
-  const pick = (names: string[]) => byLabel.get(...names);
-
-  const sales      = pick(["sales"]);
-  const cogs       = pick(["cogs", "cost of goods", "cost of goods sold"]);
-  const labor      = pick(["labor", "labour"]);
-  const prime      = pick(["prime", "prime cost"]);
-  const bank       = pick(["bank", "bank balance"]);
-  const online     = pick(["online views", "views", "online"]);
-  const review     = pick(["review score", "reviews", "rating"]);
-  const netProfit  = pick(["net profit", "profit"]);
-
-  // Render helper for a KPI card with pastel traffic-light background
-  const KpiCard = ({
-    title,
-    row,
-    higherIsBetter,
-  }: {
-    title: string;
-    row: KpiRow | undefined;
-    higherIsBetter: boolean;
-  }) => {
-    const value = row?.value ?? null;
-    const unit  = row?.unit ?? "";
-    const score = computeScore({
-      value,
-      unit,
-      higherIsBetter,
-      greenAt: row?.greenAt ?? null,
-      redAt: row?.redAt ?? null,
-    });
-    const bg = scoreToPastel(score);
-    const shown = formatByUnit(value, unit);
-
-    return (
-      <section style={shell}>
-        <div style={titleStyle}>{title}</div>
-        <div style={bar(bg)}>
-          {loading ? "Syncing…" : err ? "Error" : shown}
-        </div>
-      </section>
-    );
-  };
+  // Resolve KPIs by friendly names (aliases supported)
+  const sales     = byLabel.get("sales");
+  const cogs      = byLabel.get("cogs", "cost of goods", "cost of goods sold");
+  const labor     = byLabel.get("labor", "labour");
+  const prime     = byLabel.get("prime", "prime cost");
+  const bank      = byLabel.get("bank", "bank balance");
+  const online    = byLabel.get("online views", "views", "online");
+  const review    = byLabel.get("review score", "reviews", "rating");
+  const netProfit = byLabel.get("net profit", "profit");
 
   // shared styles (Pastel / Pill / Soft)
   const shell: React.CSSProperties = {
@@ -213,26 +153,56 @@ export default function Dashboard() {
   });
   const titleStyle: React.CSSProperties = { fontWeight: 800, fontSize: 16, marginBottom: 8 };
 
+  const KpiCard = ({
+    title,
+    row,
+    higherIsBetter,
+  }: {
+    title: string;
+    row: KpiRow | undefined;
+    higherIsBetter: boolean;
+  }) => {
+    const value = row?.value ?? null;
+    const unit: Unit = row?.unit ?? "";
+    const score = computeScore({
+      value,
+      unit,
+      higherIsBetter,
+      greenAt: row?.greenAt ?? null,
+      redAt: row?.redAt ?? null,
+    });
+    const bg = scoreToPastel(score);
+    const shown =
+      unit === "$" ? fmtUSD(value) : unit === "%" ? fmtPct(value) : fmtInt(value);
+
+    return (
+      <section style={shell}>
+        <div style={titleStyle}>{title}</div>
+        <div style={bar(bg)}>{loading ? "Syncing…" : err ? "Error" : shown}</div>
+      </section>
+    );
+  };
+
   return (
     <main className="main">
       <h1 style={{ margin: "12px 0 16px" }}>Innovue Dashboard</h1>
 
-      {/* Sales (higher is better) */}
+      {/* Sales (higher better) */}
       <KpiCard title="Sales" row={sales} higherIsBetter />
 
-      {/* Row: COGS (lower better) + Labor (lower better) */}
+      {/* COGS + Labor (lower better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
-        <KpiCard title="COGS"  row={cogs}  higherIsBetter={false} />
+        <KpiCard title="COGS" row={cogs} higherIsBetter={false} />
         <KpiCard title="Labor" row={labor} higherIsBetter={false} />
       </div>
 
-      {/* Row: Prime (lower better) + Bank (higher better) */}
+      {/* Prime (lower better) + Bank (higher better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
         <KpiCard title="Prime" row={prime} higherIsBetter={false} />
-        <KpiCard title="Bank"  row={bank}  higherIsBetter />
+        <KpiCard title="Bank" row={bank} higherIsBetter />
       </div>
 
-      {/* Row: Online Views (higher better) + Review Score (higher better) */}
+      {/* Online Views + Review Score (higher better) */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 16 }}>
         <KpiCard title="Online Views" row={online} higherIsBetter />
         <KpiCard title="Review Score" row={review} higherIsBetter />
