@@ -1,17 +1,31 @@
-/* src/index.css — mobile baseline */
-:root { }
-html, body, #root { height: 100%; }
-body {
-  margin: 0;
-  background: #111;  /* temp dark bg */
-  color: #eee;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-}
+/* src/index.css — mobile grayscale skin (Pastel / Pill / Soft stays on tiles) */
 
-/* mobile container helpers */
-.main {
-  width: 100%;
-  max-width: 420px;   /* phone width fence */
-  margin: 0 auto;
-  padding: 12px;
-}
+/* Tokens (from README.design-tokens) */
+:root {
+    --app-bg:   #F0F1F5;  /* bg/app */
+    --ink-main: #2A2C34;  /* ink/main */
+    --ink-dim:  #787D85;  /* ink/dim */
+    --frame:    #E1E2E6;  /* border/frame */
+    --shadow:   0 2px 10px rgba(0,0,0,0.18);
+  }
+  
+  /* Make the app fill the screen */
+  html, body, #root { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--app-bg);
+    color: var(--ink-main);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Arial, sans-serif;
+  }
+  
+  /* Mobile container: phone-first width fence */
+  .main {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+  
+  /* Optional helpers you can reuse later */
+  .text-dim { color: var(--ink-dim); }
+  .frame    { border: 1px solid var(--frame); border-radius: 16px; box-shadow: var(--shadow); }
