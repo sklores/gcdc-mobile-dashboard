@@ -1,24 +1,35 @@
 // src/components/dashboard/Dashboard.tsx
+// Mobile-only dashboard workbench
+// - Reads KPI rows (A2:G17) from Sheets
+// - Maps KPIs by LABEL text (column A) so row order can change
+// - Pastel red→amber→green by score/targets
+// - Includes TopBarShell, Marquee (+filters), BottomBar
+
 import { useEffect, useMemo, useState } from "react";
 import { fetchSheetValues } from "../../features/data/sheets/fetch";
+import TopBarShell from "../topbar/TopBarShell";
 import Marquee from "./Marquee/Marquee";
 import BottomBar from "../bottombar/BottomBar";
 
-// helpers
+// ---------- helpers ----------
 const toNum = (v: unknown) => {
   const n = Number(String(v ?? "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : null;
 };
 const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+
 const fmtUSD = (n: number | null) =>
   n == null ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const fmtPct = (n: number | null) => (n == null ? "—" : `${Math.round(n)}%`);
 const fmtInt = (n: number | null) => (n == null ? "—" : n.toLocaleString("en-US"));
+
 type Unit = "$" | "%" | "";
 
+// pastel traffic-light colors
 const PASTEL = { red: "#F6C1C1", amber: "#F8D5AA", green: "#C6E2D6" };
 const scoreToPastel = (s: number) => (s >= 70 ? PASTEL.green : s >= 40 ? PASTEL.amber : PASTEL.red);
 
+// compute score with optional green/red targets
 function computeScore(opts: {
   value: number | null; unit: Unit; higherIsBetter: boolean; greenAt?: number | null; redAt?: number | null;
 }) {
@@ -33,6 +44,7 @@ function computeScore(opts: {
   return value > 0 ? 75 : 25;
 }
 
+// ---------- component ----------
 export default function Dashboard() {
   const [rows, setRows] = useState<string[][]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,6 +66,7 @@ export default function Dashboard() {
     })();
   }, []);
 
+  // KPI rows inside A2:G17 (0-based)
   const kpiRowIdx = [0,1,2,3,4,5,8,9,10];
   type KpiRow = { label: string; value: number | null; greenAt: number | null; redAt: number | null; unit: Unit };
 
@@ -70,6 +83,7 @@ export default function Dashboard() {
     return out;
   }, [rows]);
 
+  // label mapping
   const byLabel = useMemo(() => {
     const map = new Map<string, KpiRow>();
     const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
@@ -87,6 +101,7 @@ export default function Dashboard() {
   const review    = byLabel.get("review score","reviews","rating");
   const netProfit = byLabel.get("net profit","profit");
 
+  // shared styles
   const shell: React.CSSProperties = { background:"#fff", color:"#2A2C34", border:"1px solid #E1E2E6", borderRadius:16, padding:14, boxShadow:"0 2px 10px rgba(0,0,0,0.18)" };
   const bar = (bg:string): React.CSSProperties => ({ height:64, display:"flex", alignItems:"center", justifyContent:"center", borderRadius:12, background:bg, color:"#0b2540", fontWeight:900, fontSize:24, letterSpacing:0.3 });
   const titleStyle: React.CSSProperties = { fontWeight:800, fontSize:16, marginBottom:8 };
@@ -131,7 +146,8 @@ export default function Dashboard() {
 
   return (
     <main className="main">
-      {/* (TopBar will be inserted here in step C) */}
+      {/* Scenic TopBar shell (no animations yet) */}
+      <TopBarShell />
 
       {/* Sales */}
       <KpiCard title="Sales" row={sales} higherIsBetter />
@@ -172,7 +188,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* BottomBar */}
+      {/* BottomBar with iOS safe-area padding */}
       <BottomBar lastSync={lastSync} ok={!err} />
     </main>
   );
