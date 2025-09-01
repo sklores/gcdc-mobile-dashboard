@@ -1,4 +1,6 @@
 // src/components/topbar/ScenicStage/index.tsx
+// Glue file that imports the scenic layer placeholders with correct relative paths.
+
 import SkyLayer from "./SkyLayer/SkyLayer";
 import SunMoon from "./SunMoon/SunMoon";
 import Lighthouse from "./Lighthouse/Lighthouse";
