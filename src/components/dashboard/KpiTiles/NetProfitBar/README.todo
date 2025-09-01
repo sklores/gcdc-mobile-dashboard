@@ -1,0 +1,4 @@
+NetProfitBar (per guide/sketch)
+- Bottom KPI tile shows Net Profit for Day/Week/Month
+- Pulls from Sheets (range to be defined in sheetMap.ts)
+- Same red → yellow → green gradient logic

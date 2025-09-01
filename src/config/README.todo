@@ -1,0 +1,3 @@
+config folder
+- tuning.ts: TopBar “tuning knobs” (sizes/positions/speeds) — per guide’s TopBar tuning.  [oai_citation:0‡Innovue Mobile Dashboard Reference Guide FILE TREE IDEAS.pdf](file-service://file-2SKBtSaGrfUW1ojUQcnNQ6)
+- sheetMap.ts: KPI → Google Sheets ranges (Day/Week/Month), matching the dashboard/order in the sketch.  [oai_citation:1‡Innovue Mobile Dashboard Reference Guide SKETCHES (3).pdf](file-service://file-A64K182dyCqZccZkr4RvUE)

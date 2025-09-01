@@ -1,0 +1,8 @@
+ScenicStage layer order (per guide/sketch)
+1) SkyLayer
+2) SunMoon (top-right, time-based)
+3) Lighthouse (left)
+4) LightBeam (on load/refresh)
+5) Birds (count tied to Labor KPI)
+6) Waves (size tied to Sales KPI)
+7) Weather (clouds/fog/rain/lightning)

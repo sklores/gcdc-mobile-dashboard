@@ -1,0 +1,51 @@
+Design tokens (vibe lock)
+- Tile vibe: Pastel (soft Beach-Day accents)
+- Corners: Pill (16px)
+- Shadow: Soft (subtle drop; low elevation)
+
+Surface tokens
+- bg/app: light neutral
+- bg/tile: white
+- border/frame: light cool gray
+- shadow/soft: low-opacity blur
+- ink/main: near-black
+- ink/dim: medium gray
+
+Accent tokens (examples)
+- kpi/cogs: soft amber
+- kpi/labor: soft sky
+- kpi/prime: soft teal
+- kpi/bank: soft cyan
+- kpi/profit: soft butter yellow
+- marquee/bg: soft lavender
+
+Why: matches our color boards (grayscale + Beach Day + pastels) and keeps the scenic TopBar readable.
+Hex tokens
+- ink/main: #2A2C34
+- ink/dim:  #787D85
+- frame:    #E1E2E6
+- bg/app:   #F0F1F5
+- bg/tile:  #FFFFFF
+- shadow/soft: rgba(0,0,0,0.18)
+
+KPI accents (pastel)
+- kpi/cogs:   #F8D5AA
+- kpi/labor:  #C1DCEE
+- kpi/prime:  #C6E2D6
+- kpi/bank:   #BDDBE6
+- kpi/profit: #F9F1C7
+- marquee/bg: #CCBAF6
+Score → color thresholds (global)
+- 0–39  = red (poor)
+- 40–69 = amber (watch)
+- 70–100 = green (good)
+
+Per-metric direction
+- Sales: higher = better
+- Net Profit: higher = better
+- COGS %: lower = better
+- Labor %: lower = better
+- Prime %: lower = better
+- Bank balance: higher = better
+- Online views: higher = better
+- Review score: higher = better
