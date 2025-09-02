@@ -1,4 +1,8 @@
 :root {
+  :root {
+    --bg: #15171c;  /* dark grey */
+    --text: #e9eaee;
+  }
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
